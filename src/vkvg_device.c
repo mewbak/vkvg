@@ -2,38 +2,35 @@
 #include "vkvg_context_internal.h"
 #include "shaders.h"
 
+void _createLogicalDevice       (VkPhysicalDevice phy, VkvgDevice dev);
 void _create_pipeline_cache     (VkvgDevice dev);
 void _setupRenderPass           (VkvgDevice dev);
 void _setupPipelines            (VkvgDevice dev);
 void _createDescriptorSetLayout (VkvgDevice dev);
 
-VkvgDevice vkvg_device_create(VkDevice vkdev, VkQueue queue, uint32_t qFam, VkPhysicalDeviceMemoryProperties memprops)
+VkvgDevice vkvg_device_create(VkPhysicalDevice phy)
 {
     VkvgDevice dev = (vkvg_device*)malloc(sizeof(vkvg_device));
+
+    vkGetPhysicalDeviceMemoryProperties(phy, &dev->phyMemProps);
+
+    _createLogicalDevice (phy, dev);
 
     dev->hdpi = 96;
     dev->vdpi = 96;
 
-    dev->vkDev = vkdev;
-    dev->phyMemProps = memprops;
-
-    dev->queue = queue;
-    dev->qFam  = qFam;
     dev->lastCtx = NULL;
 
-    dev->cmdPool = vkh_cmd_pool_create      (dev->vkDev, qFam, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    dev->cmdPool = vkh_cmd_pool_create      (dev->vkDev, dev->qFamIdx, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
     dev->cmd = vkh_cmd_buff_create          (dev->vkDev, dev->cmdPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     dev->fence = vkh_fence_create_signaled  (dev->vkDev);
 
     _create_pipeline_cache(dev);
-
     _init_fonts_cache(dev);
-
     _setupRenderPass (dev);
-
     _createDescriptorSetLayout (dev);
-
     _setupPipelines (dev);
+
     return dev;
 }
 
@@ -76,6 +73,35 @@ void _init_all_contexes (VkvgDevice dev){
     }
 }
 
+void _createLogicalDevice (VkPhysicalDevice phy, VkvgDevice dev) {
+    uint32_t queue_family_count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties (phy, &queue_family_count, NULL);
+    VkQueueFamilyProperties qfams[queue_family_count];
+    vkGetPhysicalDeviceQueueFamilyProperties (phy, &queue_family_count, qfams);
+
+    dev->qFamIdx = -1;
+    for (int j=0; j<queue_family_count; j++){
+        if (qfams[j].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            dev->qFamIdx = j;
+            break;
+        }
+    }
+    assert(dev->qFamIdx>=0);
+
+    float queue_priorities[1] = {0.0};
+    VkDeviceQueueCreateInfo qInfo = { .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                   .queueCount = 1,
+                                   .queueFamilyIndex = dev->qFamIdx,
+                                   .pQueuePriorities = queue_priorities };
+
+    VkDeviceCreateInfo device_info = { .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                                       .queueCreateInfoCount = 1,
+                                       .pQueueCreateInfos = &qInfo};
+
+    VK_CHECK_RESULT(vkCreateDevice(phy, &device_info, NULL, &dev->vkDev));
+
+    vkGetDeviceQueue(dev->vkDev, dev->qFamIdx, 0, &dev->queue);
+}
 void _create_pipeline_cache(VkvgDevice dev){
     VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
     VK_CHECK_RESULT(vkCreatePipelineCache(dev->vkDev, &pipelineCacheCreateInfo, NULL, &dev->pipelineCache));
@@ -162,7 +188,6 @@ void _setupRenderPass(VkvgDevice dev)
 
     VK_CHECK_RESULT(vkCreateRenderPass(dev->vkDev, &renderPassInfo, NULL, &dev->renderPass));
 }
-
 void _setupPipelines(VkvgDevice dev)
 {
     VkGraphicsPipelineCreateInfo pipelineCreateInfo = { .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -308,7 +333,6 @@ void _setupPipelines(VkvgDevice dev)
     vkDestroyShaderModule(dev->vkDev, shaderStages[0].module, NULL);
     vkDestroyShaderModule(dev->vkDev, shaderStages[1].module, NULL);
 }
-
 void _createDescriptorSetLayout (VkvgDevice dev) {
 
     VkDescriptorSetLayoutBinding dsLayoutBinding =

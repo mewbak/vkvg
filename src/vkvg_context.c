@@ -40,7 +40,7 @@ VkvgContext vkvg_create(VkvgSurface surf)
     ctx->points = (vec2*)       malloc (VKVG_VBO_SIZE*sizeof(vec2));
     ctx->pathes = (uint32_t*)   malloc (VKVG_PATHES_SIZE*sizeof(uint32_t));
 
-    ctx->cmdPool = vkh_cmd_pool_create (dev->vkDev, dev->qFam, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    ctx->cmdPool = vkh_cmd_pool_create (dev->vkDev, dev->qFamIdx, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     _create_vertices_buff   (ctx);
     _create_cmd_buff        (ctx);
