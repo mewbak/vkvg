@@ -613,7 +613,14 @@ void test_img_surface (VkvgContext ctx) {
     vkvg_flush(ctx);
     vkvg_surface_destroy(imgSurf);
 }
+void test_svg_surface (VkvgContext ctx) {
+    VkvgSurface imgSurf = vkvg_surface_create_from_svg(device, "/mnt/data/images/svg/tiger.svg");
 
+    vkvg_set_source_surface(ctx, imgSurf, 300, 300);
+    vkvg_paint(ctx);
+    vkvg_flush(ctx);
+    vkvg_surface_destroy(imgSurf);
+}
 int main(int argc, char *argv[]) {
     dumpLayerExts();
 
@@ -638,12 +645,12 @@ int main(int argc, char *argv[]) {
     vkvg_rectangle(ctx,0,0,1024,800);
     vkvg_fill (ctx);
 
-    vkvg_test_fill(ctx);
-    vkvg_test_stroke(ctx);
-    vkvg_test_curves(ctx);
-    test_text(ctx);
+    //vkvg_test_fill(ctx);
+    //vkvg_test_stroke(ctx);
+    //vkvg_test_curves(ctx);
 
     //test_img_surface(ctx);
+    test_svg_surface(ctx);
 
     //vkvg_destroy(ctx);
     //ctx = vkvg_create(surf);

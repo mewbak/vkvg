@@ -3,6 +3,8 @@
 #include "vkvg_context_internal.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#define NANOSVG_IMPLEMENTATION
+#include "nanosvg.h"
 
 void _clear_stencil (VkvgSurface surf)
 {
@@ -158,6 +160,54 @@ VkvgSurface vkvg_surface_create_from_image (VkvgDevice dev, const char* filePath
     vkvg_destroy        (ctx);
     vkh_image_destroy   (tmpImg);
 
+    return surf;
+}
+
+
+VkvgSurface vkvg_surface_create_from_svg (VkvgDevice dev, const char* filePath) {
+    NSVGimage* g_image = NULL;
+    g_image = nsvgParseFromFile(filePath, "px", 96.0f);
+    if (g_image == NULL) {
+        fprintf (stderr, "Could not open SVG image from %s\n", filePath);
+        return NULL;
+    }
+
+    NSVGshape* shape;
+    NSVGpath* path;
+
+    VkvgSurface surf = (vkvg_surface*)calloc(1,sizeof(vkvg_surface));
+
+    surf->dev = dev;
+    surf->width = g_image->width;
+    surf->height = g_image->height;
+
+    _init_surface (surf);
+
+    VkvgContext ctx = vkvg_create(surf);
+    vkvg_set_linewidth(ctx,2.0);
+    vkvg_set_rgba(ctx,1.0,1.0,1.0,1.0);
+    for (shape = g_image->shapes; shape != NULL; shape = shape->next) {
+        for (path = shape->paths; path != NULL; path = path->next) {
+            vkvg_move_to(ctx, path->pts[0], path->pts[1]);
+            int i = 2;
+
+            while (i < path->npts){
+                vkvg_line_to(ctx, path->pts[i], path->pts[i+1]);
+                i+=2;
+            }
+            if (path->closed){
+                vkvg_close_path(ctx);
+                //vkvg_fill_preserve(ctx);
+            }
+
+            vkvg_stroke(ctx);
+            //drawPath(path->pts, path->npts, path->closed, px * 1.5f);
+        }
+    }
+
+    nsvgDelete(g_image);
+
+    vkvg_destroy(ctx);
     return surf;
 }
 

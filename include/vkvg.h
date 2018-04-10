@@ -27,6 +27,7 @@ VkvgDevice	vkvg_device_create			(VkPhysicalDevice phy, VkDevice vkdev, VkQueue q
 void		vkvg_device_destroy			(VkvgDevice dev);
 
 VkvgSurface vkvg_surface_create			(VkvgDevice dev, uint32_t width, uint32_t height);
+VkvgSurface vkvg_surface_create_from_svg    (VkvgDevice dev, const char* filePath);
 VkvgSurface vkvg_surface_create_from_image  (VkvgDevice dev, const char* filePath);
 
 void		vkvg_surface_destroy		(VkvgSurface surf);
